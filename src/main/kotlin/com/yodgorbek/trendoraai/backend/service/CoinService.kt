@@ -4,7 +4,6 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -150,7 +149,10 @@ object CoinService {
         if (coinListCache.isValid()) return coinListCache.data!!
 
         return try {
-            val response: CoinCapListResponse = client.get("$BASE_URL/assets?limit=50").body()
+            val response: CoinCapListResponse = client.get("$BASE_URL/assets?limit=50") {
+                header(HttpHeaders.Accept, "application/json")
+                header(HttpHeaders.UserAgent, "Mozilla/5.0 TrendoraAI/1.0")
+            }.body()
             
             val coins = response.data.map { asset ->
                 CoinMin(
@@ -169,6 +171,9 @@ object CoinService {
             coins
         } catch (e: Exception) {
             println("CoinCap List Error: ${e.message}")
+            e.printStackTrace() // Print full stack trace to logs
+            // Return empty list, but log error.
+            // If cache exists (even expired), maybe return it?
             coinListCache.data ?: emptyList()
         }
     }
@@ -178,7 +183,10 @@ object CoinService {
         if (cache != null && cache.isValid()) return cache.data
 
         return try {
-            val response: CoinCapDetailResponse = client.get("$BASE_URL/assets/$id").body()
+            val response: CoinCapDetailResponse = client.get("$BASE_URL/assets/$id") {
+                header(HttpHeaders.Accept, "application/json")
+                header(HttpHeaders.UserAgent, "Mozilla/5.0 TrendoraAI/1.0")
+            }.body()
             val asset = response.data
 
             val coin = CoinDetailFull(
@@ -198,6 +206,7 @@ object CoinService {
             coin
         } catch (e: Exception) {
             println("CoinCap Detail Error: ${e.message}")
+            e.printStackTrace()
             cache?.data
         }
     }
@@ -208,31 +217,19 @@ object CoinService {
         if (cache != null && cache.isValid()) return cache.data!!
 
         return try {
-            // CoinCap intervals: m1, m5, m15, m30, h1, h2, h6, h12, d1
-            // Mapping 'days' to CoinCap interval
             val interval = when(days) {
-                "1" -> "h1" // 1 day -> hourly
-                "7" -> "h6" // 7 days -> 6 hours
-                "30" -> "h12" // 30 days -> 12 hours
-                else -> "d1" // > 30 days -> daily
+                "1" -> "h1"
+                "7" -> "h6"
+                "30" -> "h12"
+                else -> "d1"
             }
 
-            // CoinCap history requires start/end or just interval (returns max allowed for interval?)
-            // Actually /assets/{id}/history?interval=d1 returns all history available at that interval usually.
-            // But we might want to restrict it or let it be.
-            // Since User requested mapped "days", CoinCap doesn't take "days" param directly.
-            // We can calculate start timestamp if needed, but for simplicity let's just get the data and slice it if strictly needed,
-            // or just rely on interval.
-            // Simple approach: just pass interval.
-            
             val response: CoinCapHistoryResponse = client.get("$BASE_URL/assets/$id/history") {
                 parameter("interval", interval)
+                header(HttpHeaders.Accept, "application/json")
+                header(HttpHeaders.UserAgent, "Mozilla/5.0 TrendoraAI/1.0")
             }.body()
 
-            // Filter by days manually if needed?
-            // "days" param is string logic from frontend.
-            // Let's just return what we get, it's usually enough.
-            
             val prices = response.data.map { point ->
                 listOf(point.time.toDouble(), point.priceUsd.toDouble())
             }
