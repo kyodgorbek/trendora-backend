@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: TrendoraAI API
+  description: Backend API for TrendoraAI Crypto & AI Application
+  version: 1.0.0
+servers:
+  - url: https://trendora-backend-jcnh.onrender.com/api
+    description: Production Server
+
+paths:
+  /coins:
+    get:
+      summary: Get List of Coins
+      description: Returns a list of top cryptocurrencies with market data.
+      parameters:
+        - in: query
+          name: currency
+          schema:
+            type: string
+            default: usd
+          description: Target currency (e.g. usd, eur).
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoinMin'
+
+  /coins/{id}:
+    get:
+      summary: Get Coin Details
+      description: Returns detailed information for a specific coin.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: The coin ID (e.g. bitcoin).
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoinDetailFull'
+
+  /coins/{id}/history:
+    get:
+      summary: Get Coin History
+      description: Returns historical price data for a specific coin.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: The coin ID (e.g. bitcoin).
+        - in: query
+          name: days
+          schema:
+            type: string
+            default: "30"
+          description: Time range (e.g. 1, 7, 30, max).
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryResponse'
+
+  /coins/{id}/predict:
+    get:
+      summary: Get AI Prediction
+      description: Returns AI-generated price trend prediction.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: days
+          schema:
+            type: string
+            default: "30"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiResponse'
+
+  /coins/{id}/full:
+    get:
+      summary: Get Full Aggregated Data
+      description: Returns Coin info, History, and AI prediction in a single payload.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: days
+          schema:
+            type: string
+            default: "30"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoinFullResponse'
+
+components:
+  schemas:
+    CoinMin:
+      type: object
+      properties:
+        id:
+          type: string
+        symbol:
+          type: string
+        name:
+          type: string
+        current_price:
+          type: number
+          format: double
+
+    CoinDetailFull:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        symbol:
+          type: string
+    
+    HistoryResponse:
+      type: object
+      properties:
+        prices:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+
+    AiResponse:
+      type: object
+      properties:
+        trend:
+          type: string
+        confidence:
+          type: integer
+        explanation:
+          type: string
+        predicted_prices:
+          type: array
+          items:
+            type: number
+
+    CoinFullResponse:
+      type: object
+      properties:
+        coin:
+          $ref: '#/components/schemas/CoinDetailFull'
+        history:
+          $ref: '#/components/schemas/HistoryResponse'
+        ai:
+          $ref: '#/components/schemas/AiResponse'
