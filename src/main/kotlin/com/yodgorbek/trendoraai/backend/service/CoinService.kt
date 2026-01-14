@@ -2,7 +2,7 @@ package com.yodgorbek.trendoraai.backend.service
 
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.apache.*
+import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -122,9 +122,10 @@ data class GroqPredictionResponse(
 
 object CoinService {
 
-    private val client = HttpClient(Apache) {
+    // SWITCHED TO CIO ENGINE TO FIX DNS ISSUES ON RENDER
+    private val client = HttpClient(CIO) {
         engine {
-            followRedirects = true
+            requestTimeout = 15_000
         }
 
         install(ContentNegotiation) {
@@ -171,9 +172,7 @@ object CoinService {
             coins
         } catch (e: Exception) {
             println("CoinCap List Error: ${e.message}")
-            e.printStackTrace() // Print full stack trace to logs
-            // Return empty list, but log error.
-            // If cache exists (even expired), maybe return it?
+            e.printStackTrace()
             coinListCache.data ?: emptyList()
         }
     }
